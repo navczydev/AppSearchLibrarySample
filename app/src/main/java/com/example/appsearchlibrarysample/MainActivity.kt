@@ -8,7 +8,7 @@ import androidx.appsearch.app.*
 import androidx.appsearch.exceptions.AppSearchException
 import androidx.appsearch.localstorage.LocalStorage
 import androidx.core.content.ContextCompat
-import com.example.appsearchlibrarysample.document.Note
+import com.example.appsearchlibrarysample.document.Pet
 import com.google.common.util.concurrent.FutureCallback
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
@@ -19,17 +19,17 @@ class MainActivity : AppCompatActivity() {
     lateinit var mExecutor: Executor
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val context: Context = applicationContext
         mExecutor = ContextCompat.getMainExecutor(this@MainActivity)
         setContentView(R.layout.activity_main)
 
+        val context: Context = applicationContext
         val sessionFuture = LocalStorage.createSearchSession(
-            LocalStorage.SearchContext.Builder(context, "notes_app")
+            LocalStorage.SearchContext.Builder(context, "pets_app")
                 .build()
         )
 
         val setSchemaRequest =
-            SetSchemaRequest.Builder().addDocumentClasses(Note::class.java)
+            SetSchemaRequest.Builder().addDocumentClasses(Pet::class.java)
                 .build()
         val setSchemaFuture = Futures.transformAsync(
             sessionFuture,
@@ -40,27 +40,24 @@ class MainActivity : AppCompatActivity() {
             },
             mExecutor
         )
-        val note = Note(
+        val pet = Pet(
             namespace = "user1",
-            id = "noteID",
+            id = "petID",
             score = 10,
-            text = "Buy fresh fruit"
+            name = "Aishley"
         )
 
         setSchemaFuture.addListener(
             {
-                Log.e(TAG, "onCreate: SCHEMA SET_UP DONE, Insert NOTE")
-                // putNotes(sessionFuture, note)
-                searchNotes(sessionFuture)
+                Log.e(TAG, "onCreate: SCHEMA SET_UP DONE, Insert Pet Document")
+                putPetDocument(sessionFuture, pet)
             },
             mExecutor
         )
 
-        // putNotes(sessionFuture, note)
-
         // TODO remove
         /*  val removeRequest = RemoveByDocumentIdRequest.Builder("user1")
-              .addIds("noteID")
+              .addIds("petID")
               .build()
   
           val removeFuture = Futures.transformAsync(
@@ -77,14 +74,12 @@ class MainActivity : AppCompatActivity() {
               },
               mExecutor
           )*/
-
-        // searchNotes(sessionFuture)
     }
 
-    private fun putNotes(sessionFuture: ListenableFuture<AppSearchSession>, note: Note) {
-        Log.e(TAG, "putNotes: ${sessionFuture.isDone}")
+    private fun putPetDocument(sessionFuture: ListenableFuture<AppSearchSession>, pet: Pet) {
+        Log.e(TAG, "putPet: ${sessionFuture.isDone}")
 
-        val putRequest = PutDocumentsRequest.Builder().addDocuments(note).build()
+        val putRequest = PutDocumentsRequest.Builder().addDocuments(pet).build()
         val putFuture = Futures.transformAsync(
             sessionFuture,
             { session ->
@@ -107,7 +102,7 @@ class MainActivity : AppCompatActivity() {
                     // Gets map of failed results from Id to AppSearchResult
                     val failedResults = result?.failures
                     Log.e(TAG, "onSuccessFailures: INSERT $failedResults")
-                    searchNotes(sessionFuture)
+                    searchPet(sessionFuture)
                 }
 
                 override fun onFailure(t: Throwable) {
@@ -118,8 +113,8 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-    private fun searchNotes(sessionFuture: ListenableFuture<AppSearchSession>) {
-        Log.e(TAG, "searchNotes: ${sessionFuture.isDone}")
+    private fun searchPet(sessionFuture: ListenableFuture<AppSearchSession>) {
+        Log.e(TAG, "searchPet: ${sessionFuture.isDone}")
         // search
         val searchSpec = SearchSpec.Builder()
             .addFilterNamespaces("user1")
@@ -128,7 +123,7 @@ class MainActivity : AppCompatActivity() {
         val searchFuture = Futures.transform(
             sessionFuture,
             { session ->
-                session?.search("fruit", searchSpec)
+                session?.search("Aishley", searchSpec)
             },
             mExecutor
         )
@@ -138,8 +133,8 @@ class MainActivity : AppCompatActivity() {
                 override fun onSuccess(searchResults: SearchResults?) {
                     Futures.addCallback(
                         iterateSearchResults(searchResults),
-                        object : FutureCallback<Note> {
-                            override fun onSuccess(result: Note?) {
+                        object : FutureCallback<Pet> {
+                            override fun onSuccess(result: Pet?) {
                                 Log.e(TAG, "onSuccess $result")
                             }
 
@@ -152,36 +147,39 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 override fun onFailure(t: Throwable?) {
-                    Log.e(TAG, "Failed to search notes in AppSearch.", t)
+                    Log.e(TAG, "Failed to search pets in AppSearch.", t)
                 }
             },
             mExecutor
         )
     }
 
-    fun iterateSearchResults(searchResults: SearchResults?): ListenableFuture<Note> =
+    fun iterateSearchResults(searchResults: SearchResults?): ListenableFuture<Pet> =
         Futures.transform(
             searchResults?.nextPage!!,
             { page: List<SearchResult>? ->
                 // Gets GenericDocument from SearchResult.
                 val genericDocument: GenericDocument = page!![0].genericDocument
+                println(genericDocument)
+                Log.e(TAG, "iterateSearchResults: \n $genericDocument")
                 val schemaType = genericDocument.schemaType
-                val note: Note? = try {
-                    if (schemaType == "Note") {
-                        Log.e(TAG, "iterateSearchResults: Schema NOTE exist")
+                val pet: Pet? = try {
+                    if (schemaType == "Pet") {
+                        Log.e(TAG, "iterateSearchResults: Schema Pet exist")
                         Log.e(TAG, "iterateSearchResults: ${page.size}")
-                        // Converts GenericDocument object to Note object.
-                        genericDocument.toDocumentClass(Note::class.java)
+                        // Converts GenericDocument object to Pet object.
+                        genericDocument.toDocumentClass(Pet::class.java)
                     } else null
                 } catch (e: AppSearchException) {
                     Log.e(
                         TAG,
-                        "Failed to convert GenericDocument to Note",
+                        "Failed to convert GenericDocument to Pet",
                         e
                     )
                     null
                 }
-                note
+                Log.e(TAG, "iterateSearchResults: $pet")
+                pet
             },
             mExecutor
         )

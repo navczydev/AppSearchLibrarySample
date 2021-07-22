@@ -4,7 +4,7 @@ import androidx.appsearch.annotation.Document
 import androidx.appsearch.app.AppSearchSchema
 
 @Document
-data class Note(
+data class Pet(
 
     // Required field for a document class. All documents MUST have a namespace.
     @Document.Namespace
@@ -23,5 +23,5 @@ data class Note(
     // Optional field for a document class, used to index a note's text for this
     // document class.
     @Document.StringProperty(indexingType = AppSearchSchema.StringPropertyConfig.INDEXING_TYPE_PREFIXES)
-    val text: String
+    val name: String
 )
